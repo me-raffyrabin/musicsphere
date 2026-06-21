@@ -6,6 +6,27 @@ No build step, no dependencies to install. Just open the HTML file.
 
 ---
 
+## 🌐 Live Demo
+
+**▶️ [Open the rendered visualizer](https://me-raffyrabin.github.io/musicsphere/)**
+
+[![Open Live Demo](https://img.shields.io/badge/▶_Open-Live_Demo-f5c451?style=for-the-badge)](https://me-raffyrabin.github.io/musicsphere/)
+
+> Clicking the source file on GitHub only shows the code. Use the link above to open the **rendered** page.
+
+<details>
+<summary>Other ways to view it rendered</summary>
+
+- **GitHub Pages (recommended):** https://me-raffyrabin.github.io/musicsphere/
+- **htmlpreview:** [open via htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/me-raffyrabin/musicsphere/blob/main/index.html)
+- **raw.githack:** [open via raw.githack.com](https://raw.githack.com/me-raffyrabin/musicsphere/main/index.html)
+
+</details>
+
+> **First time?** Enable GitHub Pages once: **Settings → Pages → Source → Deploy from a branch → `main` / `/ (root)` → Save**. Your site goes live at the link above in ~1 minute.
+
+---
+
 ## ✨ Features
 
 - **Golden-ratio geometry** — points are distributed with the [Fibonacci sphere](https://en.wikipedia.org/wiki/Fibonacci_lattice) algorithm, each placed at the golden angle (≈137.5°) for the most even possible spread. A φ-indexed web connects them into a lattice.
@@ -28,25 +49,6 @@ open index.html
 Or double-click `index.html`. A modern desktop browser (Chrome, Edge, Firefox, Safari) is recommended.
 
 > **Note:** the page loads [Three.js](https://threejs.org/) from a CDN, so an internet connection is required on first load.
-
----
-
-## 🌐 Live Demo
-
-**▶️ [Open the rendered visualizer](https://USERNAME.github.io/REPO/)**
-
-[![Open Live Demo](https://img.shields.io/badge/▶_Open-Live_Demo-f5c451?style=for-the-badge)](https://USERNAME.github.io/REPO/)
-
-> Clicking the source file on GitHub only shows the code. Use the link above to open the **rendered** page.
-
-<details>
-<summary>Other ways to view it rendered</summary>
-
-- **GitHub Pages (recommended):** `https://USERNAME.github.io/REPO/`
-- **htmlpreview:** [open via htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/USERNAME/REPO/blob/main/index.html)
-- **raw.githack:** [open via raw.githack.com](https://raw.githack.com/USERNAME/REPO/main/index.html)
-
-</details>
 
 ---
 
@@ -85,7 +87,7 @@ Or double-click `index.html`. A modern desktop browser (Chrome, Edge, Firefox, S
 - Web Audio API — FFT spectrum analysis
 - Custom GLSL shaders — per-point audio-reactive points
 
-Everything lives in one self-contained `golden-ratio-sphere.html` file.
+Everything lives in one self-contained `index.html` file.
 
 ---
 
@@ -99,26 +101,4 @@ The golden angle, 360° / φ² ≈ **137.5°**, is the rotation that distributes
 
 ## 📄 License
 
-```
-MIT License
-
-Copyright (c) 2026 Raffy Rabin
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+Released under the [MIT License](LICENSE.txt) — © 2026 Raffy Rabin.
