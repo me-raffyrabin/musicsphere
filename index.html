@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Golden Ratio Frequency · Sphere Lattice</title>
+<style>
+  :root {
+    --gold: #f5c451;
+    --gold-soft: #d8a93a;
+    --ink: #05060a;
+    --panel: rgba(12, 14, 22, 0.55);
+    --line: rgba(245, 196, 81, 0.22);
+    --text: #e8e6df;
+    --muted: #8b8a83;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--ink); color: var(--text);
+    font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  #scene { position: fixed; inset: 0; display: block; }
+
+  /* cinematic vignette + film grain overlays */
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 2;
+    background: radial-gradient(ellipse at center,
+      rgba(0,0,0,0) 38%, rgba(0,0,0,0.55) 88%, rgba(0,0,0,0.92) 100%);
+    mix-blend-mode: multiply;
+  }
+  .scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0.06;
+    background: repeating-linear-gradient(to bottom,
+      rgba(255,255,255,0.9) 0px, rgba(255,255,255,0.9) 1px,
+      rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px);
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed; z-index: 5; left: 28px; top: 26px;
+    pointer-events: none; user-select: none;
+  }
+  .hud h1 {
+    margin: 0; font-size: 13px; letter-spacing: 0.42em; font-weight: 500;
+    color: var(--gold); text-transform: uppercase;
+  }
+  .hud .sub {
+    margin-top: 6px; font-size: 10px; letter-spacing: 0.3em; color: var(--muted);
+  }
+
+  .panel {
+    position: fixed; z-index: 6; right: 24px; top: 24px; width: 268px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px 18px 20px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(245,196,81,0.08);
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+    touch-action: pan-y;
+  }
+  .panel.docked {
+    transform: translateX(calc(100% + 40px));
+    opacity: 0; pointer-events: none;
+  }
+  /* grip handle: visual cue that the panel can be swiped right to dock */
+  .grip {
+    display: flex; justify-content: center; gap: 4px; margin: -6px 0 8px;
+    cursor: grab; padding: 4px 0;
+  }
+  .grip span { width: 22px; height: 3px; border-radius: 3px; background: var(--line); }
+  .grip:hover span { background: var(--gold-soft); }
+  /* peek arrow to restore the docked panel */
+  .peek {
+    position: fixed; z-index: 6; right: 0; top: 28px;
+    width: 30px; height: 52px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel); border: 1px solid var(--line); border-right: none;
+    border-radius: 10px 0 0 10px; color: var(--gold); font-size: 16px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    transform: translateX(100%); transition: transform 0.5s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: -8px 12px 30px rgba(0,0,0,0.4);
+  }
+  .peek.show { transform: translateX(0); }
+  .peek:hover { background: rgba(245,196,81,0.18); }
+  .panel .label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); margin: 16px 0 7px;
+  }
+  .panel .label:first-of-type { margin-top: 4px; }
+  .panel .label .val { color: var(--gold); font-size: 11px; letter-spacing: 0.08em; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 3px;
+    background: linear-gradient(90deg, var(--gold-soft), rgba(245,196,81,0.15));
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 12px rgba(245,196,81,0.8);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border-radius: 50%; border: none;
+    background: var(--gold); box-shadow: 0 0 12px rgba(245,196,81,0.8);
+  }
+
+  .feed { margin-top: 18px; }
+  .feed input[type="text"] {
+    width: 100%; background: rgba(0,0,0,0.35); border: 1px solid var(--line);
+    color: var(--text); border-radius: 9px; padding: 9px 11px;
+    font-family: inherit; font-size: 11px; letter-spacing: 0.06em; outline: none;
+  }
+  .feed input[type="text"]:focus { border-color: var(--gold-soft); }
+  .feed button {
+    margin-top: 9px; width: 100%; cursor: pointer;
+    background: linear-gradient(180deg, rgba(245,196,81,0.18), rgba(245,196,81,0.06));
+    border: 1px solid var(--gold-soft); color: var(--gold);
+    border-radius: 9px; padding: 9px; font-family: inherit;
+    font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .feed button:hover { background: rgba(245,196,81,0.22); box-shadow: 0 0 22px rgba(245,196,81,0.25); }
+  .hint { margin-top: 9px; font-size: 9px; line-height: 1.5; color: var(--muted); letter-spacing: 0.04em; }
+
+  .readout {
+    position: fixed; z-index: 5; left: 28px; bottom: 24px;
+    font-size: 9.5px; letter-spacing: 0.2em; color: var(--muted);
+    pointer-events: none;
+  }
+  .readout b { color: var(--gold); font-weight: 500; }
+  .toggle {
+    display: flex; align-items: center; gap: 8px; margin-top: 16px;
+    font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  .toggle .dot {
+    width: 28px; height: 15px; border-radius: 10px; background: rgba(255,255,255,0.08);
+    border: 1px solid var(--line); position: relative; transition: background 0.2s;
+  }
+  .toggle .dot::after {
+    content: ""; position: absolute; top: 1px; left: 1px; width: 11px; height: 11px;
+    border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s;
+  }
+  .toggle.on .dot { background: rgba(245,196,81,0.25); }
+  .toggle.on .dot::after { transform: translateX(13px); background: var(--gold); }
+</style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+  <div class="hud">
+    <h1>φ · Golden Lattice</h1>
+    <div class="sub">FIBONACCI SPHERE · RESONANCE FIELD</div>
+  </div>
+
+  <div class="peek" id="peek" title="Show panel">‹</div>
+
+  <div class="panel" id="panel">
+    <div class="grip" id="grip" title="Swipe right to dock"><span></span><span></span><span></span></div>
+    <div class="label">Frequency (Hz) <span class="val" id="vFreq">432.0</span></div>
+    <input type="range" id="freq" min="20" max="1200" step="0.1" value="432" />
+
+    <div class="label">Lattice Density <span class="val" id="vCount">1597</span></div>
+    <input type="range" id="count" min="200" max="4000" step="1" value="1597" />
+
+    <div class="label">Resonance <span class="val" id="vAmp">0.45</span></div>
+    <input type="range" id="amp" min="0" max="1" step="0.01" value="0.45" />
+
+    <div class="label">Cinematic Bloom <span class="val" id="vBloom">0.7</span></div>
+    <input type="range" id="bloom" min="0" max="1.5" step="0.01" value="0.7" />
+
+    <div class="feed">
+      <div class="label" style="margin-top:4px;">Feed φ Values</div>
+      <input type="text" id="feedInput" placeholder="e.g. 432, 1.618, 528, 21" />
+      <button id="feedBtn">Inject Into System</button>
+      <button id="phiBtn" style="margin-top:7px;">Load φ Series</button>
+      <div class="hint">Comma-separated numbers modulate frequency, harmonics &amp; pulse. Try the φ series: 1, 1.618, 2.618, 4.236…</div>
+
+      <div class="label" style="margin-top:18px;">Audio Source (MP3)</div>
+      <input type="file" id="audioFile" accept="audio/mpeg,audio/mp3,.mp3" hidden />
+      <button id="uploadBtn">Upload MP3</button>
+      <button id="playBtn" style="margin-top:7px;" disabled>▶ Play / Pause</button>
+      <div class="hint" id="audioName">No audio loaded · live spectrum maps low→high frequency across the lattice poles.</div>
+    </div>
+
+    <div class="toggle on" id="autoBtn">
+      <span class="dot"></span> Auto-Orbit
+    </div>
+  </div>
+
+  <div class="readout">
+    φ = <b>1.6180339887</b> &nbsp;·&nbsp; θ = <b id="rTheta">137.5°</b> &nbsp;·&nbsp; HARMONIC <b id="rHarm">1.00×</b> &nbsp;·&nbsp; <span id="rFeed">SYSTEM IDLE</span>
+  </div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const PHI = (1 + Math.sqrt(5)) / 2;          // golden ratio
+const GA  = Math.PI * (3 - Math.sqrt(5));    // golden angle ≈ 137.5°
+
+// ---- core three.js setup ----
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060a, 0.06);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 7.5);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enablePan = false;
+controls.minDistance = 4;
+controls.maxDistance = 16;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+
+// ---- the golden-ratio sphere lattice (Fibonacci sphere) ----
+const params = {
+  freq: 432, count: 1597, amp: 0.45, bloom: 0.7,
+  harmonic: 1, pulse: 0, feedSeq: []
+};
+const RADIUS = 3;
+
+let points, basePositions, baseColors, lineSegments, audioLevels;
+let audioCtx, analyser, freqData, audioEl, audioSource, audioReady = false;
+// pitch-intensity bands that steer the sphere's rotation
+const audioBands = { bass: 0, mid: 0, treble: 0, energy: 0, heading: 0 };
+const spinAxis = new THREE.Vector3(0, 1, 0);   // current (eased) rotation axis
+const targetAxis = new THREE.Vector3(0, 1, 0);  // heading-derived target axis
+let spinSpeed = 0;                               // current (eased) angular speed
+
+function buildLattice(n) {
+  // dispose old
+  if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
+  if (lineSegments) { scene.remove(lineSegments); lineSegments.geometry.dispose(); lineSegments.material.dispose(); }
+
+  basePositions = new Float32Array(n * 3);
+  const sizes = new Float32Array(n);
+  baseColors = new Float32Array(n * 3);
+  const dirs = [];
+
+  for (let i = 0; i < n; i++) {
+    // Fibonacci sphere: y from 1..-1, golden-angle spiral around it
+    const y = 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const theta = GA * i;                      // golden angle increment
+    const x = Math.cos(theta) * r;
+    const z = Math.sin(theta) * r;
+    const dir = new THREE.Vector3(x, y, z);
+    dirs.push(dir);
+    basePositions[i*3]   = x * RADIUS;
+    basePositions[i*3+1] = y * RADIUS;
+    basePositions[i*3+2] = z * RADIUS;
+    sizes[i] = 0.04 + 0.05 * Math.abs(Math.sin(theta * 0.5));
+
+    // gold-amber gradient toward poles, warmer at equator
+    const t = (y + 1) / 2;
+    const c = new THREE.Color().setHSL(0.10 + 0.02 * Math.sin(theta), 0.85, 0.45 + 0.18 * (1 - Math.abs(y)));
+    baseColors[i*3] = c.r; baseColors[i*3+1] = c.g; baseColors[i*3+2] = c.b;
+  }
+
+  audioLevels = new Float32Array(n); // per-point audio amplitude (0..1)
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(basePositions.slice(), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(baseColors, 3));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+  geo.setAttribute('aLevel', new THREE.BufferAttribute(audioLevels, 1));
+  geo.setAttribute('aVocal', new THREE.BufferAttribute(new Float32Array(n), 1)); // 1 = vocal band
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uPixelRatio: { value: Math.min(devicePixelRatio, 2) } },
+    vertexColors: true,
+    vertexShader: `
+      attribute float aSize; attribute float aLevel; attribute float aVocal;
+      varying vec3 vColor; varying float vLevel; varying float vVocal;
+      uniform float uPixelRatio;
+      void main() {
+        vColor = color; vLevel = aLevel; vVocal = aVocal;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * (1.0 + aLevel * 3.5) * 320.0 * uPixelRatio / -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying vec3 vColor; varying float vLevel; varying float vVocal;
+      void main() {
+        vec2 uv = gl_PointCoord - 0.5;
+        float d = length(uv);
+        float a = smoothstep(0.5, 0.0, d);
+        a *= a;
+        // audio highlight: warm gold for most bands, distinct cyan for the vocal band
+        vec3 warm  = mix(vColor, vec3(1.0, 0.95, 0.8), vLevel * 0.85);
+        vec3 vocal = mix(vColor, vec3(1.0, 0.12, 0.12), vLevel * 0.95);
+        vec3 hot = mix(warm, vocal, vVocal);
+        gl_FragColor = vec4(hot * (1.0 + a * 0.6 + vLevel * 2.2), a);
+      }`
+  });
+  mat.vertexColors = true;
+
+  points = new THREE.Points(geo, mat);
+  scene.add(points);
+
+  // connective lattice lines: link each point to its golden-index neighbour
+  const linePos = [];
+  const step = Math.max(1, Math.round(n / PHI) % n);
+  for (let i = 0; i < n; i++) {
+    const j = (i + Math.round(PHI * Math.sqrt(i + 1))) % n;
+    linePos.push(
+      basePositions[i*3], basePositions[i*3+1], basePositions[i*3+2],
+      basePositions[j*3], basePositions[j*3+1], basePositions[j*3+2]
+    );
+  }
+  const lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+  const lmat = new THREE.LineBasicMaterial({
+    color: 0xf5c451, transparent: true, opacity: 0.06,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  lineSegments = new THREE.LineSegments(lgeo, lmat);
+  scene.add(lineSegments);
+}
+buildLattice(params.count);
+
+// inner glow core
+const core = new THREE.Mesh(
+  new THREE.SphereGeometry(0.9, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xf5c451, transparent: true, opacity: 0.05 })
+);
+scene.add(core);
+
+const halo = new THREE.Mesh(
+  new THREE.SphereGeometry(RADIUS * 1.02, 48, 48),
+  new THREE.MeshBasicMaterial({ color: 0x3a2f12, transparent: true, opacity: 0.04, side: THREE.BackSide })
+);
+scene.add(halo);
+
+// starfield backdrop for cinematic depth
+const starGeo = new THREE.BufferGeometry();
+const starN = 1400, starPos = new Float32Array(starN * 3);
+for (let i = 0; i < starN; i++) {
+  const rr = 30 + Math.random() * 40;
+  const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2;
+  const s = Math.sqrt(1 - u * u);
+  starPos[i*3] = Math.cos(a) * s * rr;
+  starPos[i*3+1] = u * rr;
+  starPos[i*3+2] = Math.sin(a) * s * rr;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x554a2a, size: 0.08, transparent: true, opacity: 0.5 })));
+
+// ---- post-processing (cinematic bloom) ----
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), params.bloom, 0.85, 0.2);
+composer.addPass(bloomPass);
+
+// ---- animation loop ----
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  controls.update();
+
+  // frequency -> angular speed of breathing wave
+  const w = (params.freq / 432) * 1.4;
+
+  // pull the live audio spectrum (if an MP3 is playing) into per-point levels
+  const audioOn = sampleAudioSpectrum();
+
+  // golden-ratio standing wave displaced along surface normals
+  const pos = points.geometry.attributes.position.array;
+  const lvl = points.geometry.attributes.aLevel.array;
+  const n = pos.length / 3;
+  let decay = params.pulse;
+  for (let i = 0; i < n; i++) {
+    const bx = basePositions[i*3], by = basePositions[i*3+1], bz = basePositions[i*3+2];
+    // phase tied to golden angle index + latitude
+    const phase = i * GA * 0.5 + by * PHI;
+    let disp = Math.sin(t * w + phase) * params.amp * 0.55;
+    // harmonic layering from fed values
+    disp += Math.sin(t * w * params.harmonic + phase * PHI) * params.amp * 0.25 * params.harmonic * 0.4;
+    disp += decay * Math.sin(t * 9 + phase) * 0.6; // injection shockwave
+    disp += lvl[i] * 0.9; // audio amplitude pushes the lattice point outward
+    const k = 1 + disp / RADIUS;
+    pos[i*3]   = bx * k;
+    pos[i*3+1] = by * k;
+    pos[i*3+2] = bz * k;
+  }
+  points.geometry.attributes.position.needsUpdate = true;
+  if (audioOn) points.geometry.attributes.aLevel.needsUpdate = true;
+
+  // pulse decay
+  params.pulse *= 0.95;
+  if (params.pulse < 0.001) params.pulse = 0;
+
+  // core breathing
+  const breath = 1 + Math.sin(t * w) * params.amp * 0.3 + params.pulse * 0.5;
+  core.scale.setScalar(breath);
+  core.material.opacity = 0.05 + params.amp * 0.06 + params.pulse * 0.2;
+  lineSegments.material.opacity = 0.05 + params.amp * 0.05 + params.pulse * 0.15;
+
+  if (audioOn) {
+    // pitch-intensity bands steer the spin: heading sets the 360° axis direction,
+    // bass-vs-treble balance sets rotational sense, total energy sets speed.
+    // axis & speed are eased with inertia for a smooth, slow drift.
+    const h = audioBands.heading;
+    targetAxis.set(Math.cos(h), 0.55, Math.sin(h)).normalize();
+    spinAxis.lerp(targetAxis, 0.015).normalize();            // gentle axis easing
+    const sense = Math.sign((audioBands.treble - audioBands.bass) || 1); // +CCW treble-led / -CW bass-led
+    const targetSpeed = (0.0012 + audioBands.energy * 0.025) * sense;
+    spinSpeed += (targetSpeed - spinSpeed) * 0.02;           // inertia on speed
+    points.rotateOnWorldAxis(spinAxis, spinSpeed);
+    lineSegments.quaternion.copy(points.quaternion);
+    core.rotateOnWorldAxis(spinAxis, -spinSpeed * 0.5);
+  } else {
+    // slow golden spin when idle
+    points.rotation.y += 0.0006 * w;
+    lineSegments.rotation.copy(points.rotation);
+    core.rotation.y -= 0.0004;
+  }
+
+  composer.render();
+}
+animate();
+
+// ---- UI wiring ----
+const $ = id => document.getElementById(id);
+function bind(id, key, fmt, after) {
+  const el = $(id), out = $('v' + id.charAt(0).toUpperCase() + id.slice(1));
+  el.addEventListener('input', () => {
+    params[key] = parseFloat(el.value);
+    if (out) out.textContent = fmt(params[key]);
+    if (after) after();
+  });
+}
+bind('freq', 'freq', v => v.toFixed(1));
+bind('count', 'count', v => Math.round(v), () => buildLattice(Math.round(params.count)));
+bind('amp', 'amp', v => v.toFixed(2));
+bind('bloom', 'bloom', v => { bloomPass.strength = v; return v.toFixed(2); });
+
+// feed golden-ratio values into the system
+$('feedBtn').addEventListener('click', injectFeed);
+$('feedInput').addEventListener('keydown', e => { if (e.key === 'Enter') injectFeed(); });
+
+// load the powers-of-φ series (φ⁰, φ¹, φ²…) and inject it
+$('phiBtn').addEventListener('click', () => {
+  const series = [];
+  for (let i = 0; i < 16; i++) series.push(+(PHI ** i).toFixed(3)); // up to ~1364 (under Hz clamp)
+  $('feedInput').value = series.join(', ');
+  injectFeed();
+});
+
+function injectFeed() {
+  const raw = $('feedInput').value.trim();
+  const nums = raw.split(/[\s,]+/).map(parseFloat).filter(v => !isNaN(v) && isFinite(v));
+  if (!nums.length) { $('rFeed').textContent = 'NO VALID φ VALUES'; return; }
+  params.feedSeq = nums;
+
+  // first value drives frequency (large = Hz, small = ratio * 432)
+  const f = nums[0];
+  params.freq = f > 20 ? Math.min(1200, f) : Math.min(1200, f * 432);
+  $('freq').value = params.freq; $('vFreq').textContent = params.freq.toFixed(1);
+
+  // average ratio of consecutive values -> harmonic factor (φ ≈ 1.618 ideal)
+  let ratioSum = 0, rc = 0;
+  for (let i = 1; i < nums.length; i++) {
+    if (nums[i-1] !== 0) { ratioSum += Math.abs(nums[i] / nums[i-1]); rc++; }
+  }
+  params.harmonic = rc ? Math.max(0.2, Math.min(4, ratioSum / rc)) : PHI;
+
+  // resonance from spread of values
+  const mean = nums.reduce((a,b)=>a+b,0) / nums.length;
+  const variance = nums.reduce((a,b)=>a+(b-mean)**2,0) / nums.length;
+  params.amp = Math.max(0.1, Math.min(1, 0.3 + Math.tanh(Math.sqrt(variance)/200) * 0.7));
+  $('amp').value = params.amp; $('vAmp').textContent = params.amp.toFixed(2);
+
+  // count snapped toward nearest Fibonacci number if value count > 2
+  if (nums.length >= 3) {
+    const fib = [233,377,610,987,1597,2584,4000];
+    const target = fib[Math.min(fib.length-1, nums.length - 2)];
+    params.count = target;
+    $('count').value = target; $('vCount').textContent = target;
+    buildLattice(target);
+  }
+
+  // injection shockwave pulse
+  params.pulse = 1.0;
+
+  $('rFeed').textContent = `INJECTED ${nums.length} φ VALUES`;
+  $('rHarm').textContent = params.harmonic.toFixed(2) + '×';
+  // brief exposure flash for cinematic punch
+  flashExposure();
+}
+
+let flashT = 0;
+function flashExposure() { flashT = 1; }
+(function exposureLoop(){
+  requestAnimationFrame(exposureLoop);
+  if (flashT > 0) { flashT *= 0.9; if (flashT < 0.01) flashT = 0; }
+  renderer.toneMappingExposure = 1.15 + flashT * 0.8;
+})();
+
+// auto-orbit toggle
+$('autoBtn').addEventListener('click', () => {
+  controls.autoRotate = !controls.autoRotate;
+  $('autoBtn').classList.toggle('on', controls.autoRotate);
+});
+
+// ---- MP3 audio engine: FFT spectrum -> lattice point highlight ----
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;                 // 1024 frequency bins
+  analyser.smoothingTimeConstant = 0.8;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+}
+
+$('uploadBtn').addEventListener('click', () => $('audioFile').click());
+
+$('audioFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  initAudio();
+  if (audioEl) { audioEl.pause(); URL.revokeObjectURL(audioEl.src); }
+  audioEl = new Audio(URL.createObjectURL(file));
+  audioEl.crossOrigin = 'anonymous';
+  audioEl.loop = true;
+  audioSource = audioCtx.createMediaElementSource(audioEl);
+  audioSource.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  audioReady = true;
+  $('playBtn').disabled = false;
+  $('audioName').textContent = '♪ ' + file.name + ' · ready';
+  $('rFeed').textContent = 'AUDIO LOADED';
+});
+
+$('playBtn').addEventListener('click', () => {
+  if (!audioReady) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioEl.paused) { audioEl.play(); $('rFeed').textContent = 'AUDIO PLAYING'; }
+  else { audioEl.pause(); $('rFeed').textContent = 'AUDIO PAUSED'; }
+});
+
+// called each frame: read spectrum, map bins -> lattice points (low→high across poles)
+function sampleAudioSpectrum() {
+  if (!audioReady || audioEl.paused) {
+    // fade highlights out when no audio is playing
+    if (audioLevels && audioLevels.some(v => v > 0.001)) {
+      for (let i = 0; i < audioLevels.length; i++) audioLevels[i] *= 0.9;
+      points.geometry.attributes.aLevel.needsUpdate = true;
+    }
+    return false;
+  }
+  analyser.getByteFrequencyData(freqData);
+  const n = audioLevels.length;
+  const bins = freqData.length;
+  const voc = points.geometry.attributes.aVocal.array;
+  const hzPerBin = audioCtx.sampleRate / analyser.fftSize;
+  let peak = 0, peakBin = 0;
+  for (let i = 0; i < n; i++) {
+    // logarithmic bin mapping so bass spreads out, highs compress (perceptual)
+    const f = i / (n - 1);
+    let bin = Math.floor(Math.pow(f, 2.2) * (bins - 1));
+    if (bin < 0) bin = 0; if (bin >= bins) bin = bins - 1;
+    const target = freqData[bin] / 255;
+    // smooth attack/decay per point
+    audioLevels[i] += (target - audioLevels[i]) * 0.35;
+    // flag points in the vocal band (~300 Hz–3.4 kHz) for distinct highlight
+    const hz = bin * hzPerBin;
+    voc[i] = (hz >= 300 && hz <= 3400) ? 1 : 0;
+    if (freqData[bin] > peak) { peak = freqData[bin]; peakBin = bin; }
+  }
+  points.geometry.attributes.aVocal.needsUpdate = true;
+  // ---- pitch-intensity bands (drive rotation) ----
+  const bandAvg = (loHz, hiHz) => {
+    let s = 0, c = 0;
+    const lo = Math.max(0, Math.floor(loHz / hzPerBin));
+    const hi = Math.min(bins - 1, Math.ceil(hiHz / hzPerBin));
+    for (let b = lo; b <= hi; b++) { s += freqData[b]; c++; }
+    return c ? (s / c) / 255 : 0;
+  };
+  const sm = 0.18; // band smoothing
+  audioBands.bass   += (bandAvg(20, 250)    - audioBands.bass)   * sm;
+  audioBands.mid    += (bandAvg(250, 2000)  - audioBands.mid)    * sm;
+  audioBands.treble += (bandAvg(2000, 8000) - audioBands.treble) * sm;
+  audioBands.energy += ((audioBands.bass + audioBands.mid + audioBands.treble) / 3 - audioBands.energy) * sm;
+  // heading: full 360° direction from the balance of the pitch-intensity set
+  audioBands.heading = Math.atan2(audioBands.treble - audioBands.bass, audioBands.mid + 0.001);
+
+  // dominant frequency readout
+  const domHz = (peakBin * audioCtx.sampleRate / analyser.fftSize) | 0;
+  const deg = ((audioBands.heading * 180 / Math.PI) + 360) % 360;
+  $('rFeed').textContent = 'PEAK ' + domHz + ' Hz · SPIN ' + deg.toFixed(0) + '°';
+  return true;
+}
+
+// ---- panel docking: swipe right to hide, peek arrow to restore ----
+const panelEl = $('panel'), peekEl = $('peek');
+function dockPanel() { panelEl.classList.add('docked'); peekEl.classList.add('show'); }
+function showPanel() { panelEl.classList.remove('docked'); peekEl.classList.remove('show'); }
+peekEl.addEventListener('click', showPanel);
+
+let swStartX = 0, swStartY = 0, swiping = false;
+panelEl.addEventListener('pointerdown', e => {
+  // ignore drags that begin on a control so sliders/buttons still work
+  if (e.target.closest('input, button, .toggle')) return;
+  swStartX = e.clientX; swStartY = e.clientY; swiping = true;
+});
+window.addEventListener('pointermove', e => {
+  if (!swiping) return;
+  const dx = e.clientX - swStartX, dy = e.clientY - swStartY;
+  if (dx > 55 && dx > Math.abs(dy) * 1.5) { dockPanel(); swiping = false; } // rightward swipe
+});
+window.addEventListener('pointerup', () => { swiping = false; });
+
+// readout θ
+$('rTheta').textContent = (GA * 180 / Math.PI).toFixed(1) + '°';
+
+// resize
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
