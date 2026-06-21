@@ -25,7 +25,7 @@ No build step, no dependencies to install. Just open the HTML file.
 open golden-ratio-sphere.html
 ```
 
-Or double-click `golden-ratio-sphere.html`. A modern desktop browser (Chrome, Edge, Firefox, Safari) is recommended.
+Or double-click `index.html`. A modern desktop browser (Chrome, Edge, Firefox, Safari) is recommended.
 
 > **Note:** the page loads [Three.js](https://threejs.org/) from a CDN, so an internet connection is required on first load.
 
