@@ -31,6 +31,25 @@ Or double-click `index.html`. A modern desktop browser (Chrome, Edge, Firefox, S
 
 ---
 
+## 🌐 Live Demo
+
+**▶️ [Open the rendered visualizer](https://USERNAME.github.io/REPO/)**
+
+[![Open Live Demo](https://img.shields.io/badge/▶_Open-Live_Demo-f5c451?style=for-the-badge)](https://USERNAME.github.io/REPO/)
+
+> Clicking the source file on GitHub only shows the code. Use the link above to open the **rendered** page.
+
+<details>
+<summary>Other ways to view it rendered</summary>
+
+- **GitHub Pages (recommended):** `https://USERNAME.github.io/REPO/`
+- **htmlpreview:** [open via htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/USERNAME/REPO/blob/main/index.html)
+- **raw.githack:** [open via raw.githack.com](https://raw.githack.com/USERNAME/REPO/main/index.html)
+
+</details>
+
+---
+
 ## 🎛️ Controls
 
 | Control | What it does |
