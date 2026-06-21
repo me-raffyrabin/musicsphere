@@ -22,7 +22,7 @@ No build step, no dependencies to install. Just open the HTML file.
 
 ```bash
 # clone or download, then simply open the file in a browser
-open golden-ratio-sphere.html
+open index.html
 ```
 
 Or double-click `index.html`. A modern desktop browser (Chrome, Edge, Firefox, Safari) is recommended.
